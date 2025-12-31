@@ -3,7 +3,10 @@ package com.daviipkp.smartsteve.controller;
 import com.daviipkp.smartsteve.services.DualBrainService;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.concurrent.ExecutionException;
+
 @RestController
+@CrossOrigin("*")
 @RequestMapping("/api/steve")
 public class SteveController {
 
@@ -14,12 +17,12 @@ public class SteveController {
     }
 
     @GetMapping("/talked")
-    public String userTalked(@RequestParam String command) {
+    public String userTalked(@RequestParam String command) throws ExecutionException, InterruptedException {
         return dbs.processCommand(command);
     }
 
     @PostMapping("/chat")
-    public String  userChat(@RequestParam String command) {
+    public String  userChat(@RequestParam String command) throws ExecutionException, InterruptedException {
         return dbs.processCommand(command);
     }
 

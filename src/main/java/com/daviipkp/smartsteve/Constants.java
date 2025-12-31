@@ -8,7 +8,33 @@ public class Constants {
 
     public static final boolean DEBUG = true;
 
-    public static final String LOCAL_PROMPT = "You're called Steve. Your response will become voice audio, be straight to the point. Always call the user sir AND MAX RESPECT. The user prompted. You must answer just enough to masker the delay of network connection (less than a second). Be friendly, polite and > STRAIGHT TO POINT < . Make the beginning of the answer for the following prompt: ";
+    public static final String INTENT_PROMPT = """
+    SYSTEM: You are a strict JSON classifier.
+    INSTRUCTION: Analyze the user input and map it to one of the provided Command IDs.
+    CRITICAL RULES:
+    1. Output ONLY the Command ID.
+    2. Do NOT write "Command found" or use Markdown (```).
+    3. If no command matches, output exactly: CHAT_NORMAL
+    
+    EXAMPLES:
+    User: "Hello" -> CHAT_NORMAL
+    User: "Turn on light" -> CMD_LIGHT_ON
+    
+    AVAILABLE COMMANDS:
+    %s
+    
+    INPUT: """;
+
+    public static final String LOCAL_PROMPT = """
+    SYSTEM: You are Steve, an ultra-efficient AI assistant.
+    RULES:
+    1. Address user as "Sir".
+    2. Language: English Only.
+    3. MAX LENGTH: 1 sentence or 10 words.
+    4. NO FILLER WORDS. Do not say "Sure", "Okay", "I can help".
+    6. Be precise. Check if user want a command and if it exists. Check if he has a question AND DEFINE THE BEST WAY TO ANSWER.
+    Command List: "%s"
+    USER INPUT: """;
 
     public static final String REMOTE_PROMPT = """
                 User said: "%s".
