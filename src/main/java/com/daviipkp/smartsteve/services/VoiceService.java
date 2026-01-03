@@ -14,7 +14,7 @@ public class VoiceService {
 
     private static final String TEMP_AUDIO_FILE = "D:\\Coding\\Projects\\smartsteve\\piper\\debug_audio.wav";
 
-    public void speak(String text, Runnable onComplete) {
+    public static void speak(String text, Runnable onComplete) {
         new Thread(() -> {
             try {
                 generateWavFile(text);
@@ -33,7 +33,7 @@ public class VoiceService {
         Thread.currentThread().interrupt();
     }
 
-    private void generateWavFile(String text) throws IOException, InterruptedException {
+    private static void generateWavFile(String text) throws IOException, InterruptedException {
         String safeText = text.replace("\n", " ").replace("\"", "");
 
         ProcessBuilder pb = new ProcessBuilder(
@@ -62,7 +62,7 @@ public class VoiceService {
         }
     }
 
-    private void playWavFile() {
+    private static void playWavFile() {
         try {
             File audioFile = new File(TEMP_AUDIO_FILE);
             if (!audioFile.exists() || audioFile.length() < 100) {

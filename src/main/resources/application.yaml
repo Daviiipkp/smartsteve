@@ -6,6 +6,10 @@ google:
     api:
         key: ${GOOGLE_API_KEY}
 
+hcai:
+    api:
+        key: ${HCAI_API_KEY}
+
 hcsearch:
     api:
         key: ${HCSEARCH_API_KEY}

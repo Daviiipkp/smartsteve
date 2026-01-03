@@ -31,14 +31,12 @@ public class DualBrainService {
     private final RestClient restClient;
     private final ChatRepository chatRepo;
 
-    private final List<Command> commands = new ArrayList<>();
     private final VoiceService voiceService;
     private final EarService earService;
     private final SearchService searchService;
     @Getter
     @Setter
     private static boolean voiceTyping = false;
-    List<String> commandNames;
 
     private static String command_arg = "";
     private static String lastPrompt;
@@ -53,36 +51,33 @@ public class DualBrainService {
         this.restClient = RestClient.create();
         this.chatRepo = arg0;
         this.earService = earService;
-        commands.add(new Command(() -> {
-            try {
-                Desktop.getDesktop().browse(new URI("https://youtube.com"));
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-            return true;
-            }, "OPEN_YOUTUBE_WEBSITE"));
-        commands.add(new Command(() -> {
-            setVoiceTyping(true);
-            return true;
-        }, "START_VOICE_TYPING"));
-        commands.add(new Command(() -> {
-            setVoiceTyping(false);
-            return true;
-        }, "STOP_VOICE_TYPING"));
-        commands.add(new Command(() -> {
-            System.out.println("Played " + command_arg);
-            return true;
-        }, "PLAY_ON_SPOTIFY"));
-        commands.add(new Command(() -> {
-            earService.stopListening();
-            voiceService.speak(callOllamaLocal(String.format("Those were the results of a search made by the user: %s --- Please answer the results in a polite way. Use user prompt was: %s", searchService.searchAndSummarize(command_arg), lastPrompt), true), earService::resumeListening);
-
-            return true;
-        }, "SEARCH_WEB"));
-        commandNames = commands.stream()
-                .map(Command::getCMD_ID)
-                .toList();
+//        commands.add(new Command(() -> {
+//            try {
+//                Desktop.getDesktop().browse(new URI("https://youtube.com"));
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//                return false;
+//            }
+//            return true;
+//            }, "OPEN_YOUTUBE_WEBSITE"));
+//        commands.add(new Command(() -> {
+//            setVoiceTyping(true);
+//            return true;
+//        }, "START_VOICE_TYPING"));
+//        commands.add(new Command(() -> {
+//            setVoiceTyping(false);
+//            return true;
+//        }, "STOP_VOICE_TYPING"));
+//        commands.add(new Command(() -> {
+//            System.out.println("Played " + command_arg);
+//            return true;
+//        }, "PLAY_ON_SPOTIFY"));
+//        commands.add(new Command(() -> {
+//            earService.stopListening();
+//            voiceService.speak(callOllamaLocal(String.format("Those were the results of a search made by the user: %s --- Please answer the results in a polite way. Use user prompt was: %s", searchService.searchAndSummarize(command_arg), lastPrompt), true), earService::resumeListening);
+//
+//            return true;
+//        }, "SEARCH_WEB"));
 
         this.voiceService = voiceService;
     }
@@ -90,18 +85,14 @@ public class DualBrainService {
     public String processCommand(String userPrompt) throws ExecutionException, InterruptedException {
         String context = getContext();
 
-        CompletableFuture<String> futureIntent = CompletableFuture.supplyAsync(() -> {
-            return detectIntent(userPrompt);
+
+        CompletableFuture<String> fResponse = CompletableFuture.supplyAsync(() -> {
+            return LLMService.callModel(userPrompt);
         });
 
-        CompletableFuture<String> futureLocalResponse = CompletableFuture.supplyAsync(() -> {
-            return callOllamaLocal(userPrompt, false);
-        });
-
-        CompletableFuture.allOf(futureIntent, futureLocalResponse).join();
-
-        String intent = futureIntent.get();
-        List<String> a = Arrays.asList(intent.split("___SEPARATOR___"));
+        CompletableFuture.allOf(fResponse).join();
+        String response = fResponse.get();
+        List<String> a = Arrays.asList(response.split("___SEPARATOR___"));
         List<String> b = new ArrayList<>();
         for(String s : a) {
             if(a.indexOf(s) == 0) {
@@ -115,39 +106,32 @@ public class DualBrainService {
 
         command_arg = String.join("", b);
 
-        String localResponse = futureLocalResponse.get();
 
         if(Constants.DEBUG) {
             System.out.println("============== NOVA REQUISIÇÃO ==============");
-            System.out.println("Usuario: " + userPrompt);
-            System.out.println(">> Local: " + localResponse);
+            System.out.println("user: " + userPrompt);
+            System.out.println(">> Response: " + response);
 
-        }
-        String cloudResponse = callGeminiCloud(userPrompt, localResponse, context);
-
-        if(Constants.DEBUG) {
-            System.out.println(">> Nuvem: " + cloudResponse);
         }
         if(Constants.DEBUG) {
-            System.out.println(">> Commando requisitado! Resposta: " + intent );
+            System.out.println(">> Commando requisitado! " + command_arg );
         }
 
-        ChatMessage chatMessage = new ChatMessage(userPrompt, localResponse + cloudResponse);
+        ChatMessage chatMessage = new ChatMessage(userPrompt, response);
         //chatRepo.save(chatMessage);
         if(Constants.DEBUG) {
             System.out.println(">> Memória salva no banco H2.");
         }
         earService.stopListening();
         String firstPartOfIntent = a.get(0).trim();
-        voiceService.speak(localResponse, () -> {
-            System.out.println(commandNames);
-            if(commandNames.contains(firstPartOfIntent)) {
-                commands.get(commandNames.indexOf(firstPartOfIntent)).execute();
-            }
+        voiceService.speak(response, () -> {
             earService.resumeListening();
+            if(Command.getCommandNames().contains(firstPartOfIntent)) {
+                Command.getCommands().get(Command.getCommandNames().indexOf(firstPartOfIntent)).execute();
+            }
         });
 
-        return localResponse + " " + cloudResponse;
+        return response;
     }
 
     private String getContext() {
@@ -164,39 +148,17 @@ public class DualBrainService {
                 .collect(Collectors.joining("\n---\n"));
     }
 
-    private String callOllamaLocal(String userPrompt, boolean raw) {
-        try {
 
-            long l = System.currentTimeMillis();
-            String url = "http://localhost:11434/api/generate";
-            var body = Map.of(
-                    "model", "qwen3-coder:480b-cloud",
-                    "prompt", raw? userPrompt:String.format(Constants.LOCAL_PROMPT + userPrompt, commandNames),
-                    "stream", false
-            );
 
-            String jsonResponse = restClient.post()
-                    .uri(url)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body)
-                    .retrieve()
-                    .body(String.class);
-
-            return getOllamaTextFromJson(jsonResponse);
-        }catch(Exception e) {e.printStackTrace();return "";}
-
-    }
-
-    private String callGeminiCloud(String userPrompt, String localResponse, String context) {
+//    private String detectIntent(String userPrompt) {
 //        try {
-//            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=" + googleApiKey;
-//            String finalPrompt = String.format(Constants.REMOTE_PROMPT, userPrompt, localResponse,  context);
+//            String url = "http://localhost:11434/api/generate";
+//
 //            var body = Map.of(
-//                    "contents", List.of(
-//                            Map.of("parts", List.of(
-//                                    Map.of("text", finalPrompt)
-//                            ))
-//                    )
+//                    "model", "qwen3-coder:480b-cloud",
+//                    "prompt", String.format(Constants.INTENT_PROMPT, Command.getCommandNames()) + " \"" + userPrompt + "\"",
+//                    "stream", false,
+//                    "options", Map.of()
 //            );
 //
 //            String jsonResponse = restClient.post()
@@ -205,62 +167,14 @@ public class DualBrainService {
 //                    .body(body)
 //                    .retrieve()
 //                    .body(String.class);
-//            return getGeminiTextFromJson(jsonResponse);
-//        }catch(Exception e) {e.printStackTrace();return "";}
-        return "";
-    }
+//
+//            return getOllamaTextFromJson(jsonResponse).trim();
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return "CHAT_NORMAL";
+//        }
+//    }
 
-    private String getGeminiTextFromJson(String json) {
-        if (json == null) return "";
-
-        String marcador = "\"text\": \"";
-        int indexMarcador = json.lastIndexOf(marcador);
-
-        if (indexMarcador == -1) {
-            return "";
-        }
-
-        int start = indexMarcador + marcador.length();
-        int end = json.indexOf("\"", start);
-
-        return json.substring(start, end).replace("\\n", " ");
-    }
-
-    private String getOllamaTextFromJson(String json) {
-
-        if (json == null) return "";
-        int start = json.indexOf("\"response\":\"") + 12;
-
-        int end = json.indexOf("\",\"done\"");
-
-        if (start < 12 || end == -1) return "Error parser Ollama: " + json;
-        return json.substring(start, end).replace("\\n", " ");
-    }
-
-    private String detectIntent(String userPrompt) {
-        try {
-            String url = "http://localhost:11434/api/generate";
-
-            var body = Map.of(
-                    "model", "qwen3-coder:480b-cloud",
-                    "prompt", String.format(Constants.INTENT_PROMPT, commandNames) + " \"" + userPrompt + "\"",
-                    "stream", false,
-                    "options", Map.of()
-            );
-
-            String jsonResponse = restClient.post()
-                    .uri(url)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body)
-                    .retrieve()
-                    .body(String.class);
-
-            return getOllamaTextFromJson(jsonResponse).trim();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "CHAT_NORMAL";
-        }
-    }
 
 
 }
