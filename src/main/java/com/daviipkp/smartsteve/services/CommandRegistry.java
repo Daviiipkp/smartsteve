@@ -55,7 +55,15 @@ public class CommandRegistry {
 
     public void handleNotFound(String prompt) {
         System.out.println("Handling not found command!");
-        VoiceService.speak(llmS.callInstructedModel(prompt, "THE USER MADE THIS PROMPT BUT THE COMMAND HE ASKED WAS NOT FOUND. EXPLAIN IT TO HIM.", false).getSteveResponse(), ()->{});
+        VoiceService.speak(llmS.callDefInstructedModel(prompt, "THE USER MADE THIS PROMPT BUT THE COMMAND HE ASKED WAS NOT FOUND. EXPLAIN IT TO HIM.", false).getSteveResponse(), ()->{});
+    }
+
+    public static String getExampleUsage(String command_id, String... argument) {
+        if(argument.length > 0) {
+            return command_id + "___" + String.join("___", argument);
+        }else{
+            return command_id;
+        }
     }
 
 

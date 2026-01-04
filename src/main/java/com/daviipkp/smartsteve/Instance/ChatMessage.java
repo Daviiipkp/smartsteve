@@ -14,6 +14,7 @@ import static com.daviipkp.smartsteve.Utils.extractField;
 @Data
 @NoArgsConstructor
 public class ChatMessage {
+    //Transform all this with embedding models!
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

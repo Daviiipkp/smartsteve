@@ -4,7 +4,7 @@ import com.daviipkp.smartsteve.Instance.Command;
 import org.springframework.stereotype.Component;
 
 @Component
-public class KillSwitchCommand extends Command {
+public class InspectionModeCommand extends Command {
     @Override
     public void execute() {
 
@@ -22,11 +22,11 @@ public class KillSwitchCommand extends Command {
 
     @Override
     public String getID() {
-        return this.getClass().getSimpleName();
+        return "";
     }
 
     @Override
     public String getDescription() {
-        return "Use to kill the system completely without confirmation.";
+        return "";
     }
 }

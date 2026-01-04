@@ -53,7 +53,7 @@ public class DualBrainService {
         String context = getContext();
 
         CompletableFuture<ChatMessage> fResponse = CompletableFuture.supplyAsync(() -> {
-            return llmS.callContextedModel(userPrompt, context);
+            return llmS.callDefContextedModel(userPrompt, context);
         });
 
         CompletableFuture.allOf(fResponse).join();
@@ -70,6 +70,8 @@ public class DualBrainService {
             System.out.println(">> Response: " + response);
             System.out.println(">> Command: " + cmd);
             System.out.println(">> Context: " + cResponse.getContext());
+
+
         }
 
 

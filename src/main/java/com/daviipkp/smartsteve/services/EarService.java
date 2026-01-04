@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import javax.sound.sampled.*;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.Future;
 
 @Service
 public class EarService {
@@ -91,12 +92,15 @@ public class EarService {
 
                         }
                     }else{
+                        if(VoiceService.getCurrentThread() != null && VoiceService.getCurrentThread().isAlive()) {
+                            return;
+                        }
                         if (recognizer.acceptWaveForm(buffer, bytesRead)) {
                             String jsonResult = recognizer.getResult();
                             String text = extractTextFromVosk(jsonResult);
                             if(text.contains("steve")) {
                                 if(text.contains("shut up")) {
-                                    voiceService.shutUp();
+                                    VoiceService.shutUp();
                                     return;
                                 }
                                 if (!text.trim().isEmpty()) {

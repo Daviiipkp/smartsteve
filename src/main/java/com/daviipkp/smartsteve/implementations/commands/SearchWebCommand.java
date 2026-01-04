@@ -1,8 +1,11 @@
 package com.daviipkp.smartsteve.implementations.commands;
 
 import com.daviipkp.smartsteve.Instance.Command;
+import com.daviipkp.smartsteve.services.CommandRegistry;
 import lombok.Getter;
+import org.springframework.stereotype.Component;
 
+@Component
 public class SearchWebCommand extends Command {
 
     @Getter
@@ -33,7 +36,7 @@ public class SearchWebCommand extends Command {
 
     @Override
     public String getDescription() {
-        return "Command to search anything on Web.";
+        return "Command to search anything on Web. Example usage: " + CommandRegistry.getExampleUsage(getID(), "Who is the current US President?");
     }
 
 }

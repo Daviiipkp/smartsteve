@@ -32,6 +32,6 @@ public class TimeTrigger extends Trigger {
 
     @Override
     public void execute(LLMService llmS) {
-        VoiceService.speak(llmS.callInstructedModel("", "A TRIGGERED WAS CALLED. Please warn the user. Context: " + getContext(), false).getSteveResponse(), () -> {});
+        VoiceService.speak(llmS.callDefInstructedModel("", "A TRIGGERED WAS CALLED. Please warn the user. Context: " + getContext(), false).getSteveResponse(), () -> {});
     }
 }

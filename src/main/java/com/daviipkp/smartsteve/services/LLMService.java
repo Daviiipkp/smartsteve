@@ -21,7 +21,9 @@ import java.util.regex.Pattern;
 @Service
 public class LLMService {
 
-    private static final String defaultModel = "https://ai.hackclub.com/proxy/v1/chat/completions";
+    private static final String defaultProvider = "https://ai.hackclub.com/proxy/v1/chat/completions";
+    private static final String defaultModel = "google/gemini-3-flash-preview";
+    private static final String defaultEmbeddingModel = "openai/text-embedding-3-small";
     static String apiKey;
 
     @Value("${hcai.api.key}")
@@ -41,7 +43,7 @@ public class LLMService {
 
         String jsonBody = """
         {
-            "model": "google/gemini-3-flash-preview",
+            "model": "%s",
             "messages": [
                 {
                     "role": "user", 
@@ -49,13 +51,13 @@ public class LLMService {
                 }
             ]
         }
-        """.formatted(escapedPrompt);
+        """.formatted(defaultModel, escapedPrompt);
 
         try {
             HttpClient client = HttpClient.newHttpClient();
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(defaultModel))
+                    .uri(URI.create(defaultProvider))
                     .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
@@ -96,34 +98,83 @@ public class LLMService {
         return null;
     }
 
-    public ChatMessage callModel(String userPrompt) {
-        String fullPromptText = String.format(Constants.getPrompt(true, false, false), cmdRegistry.getCommandNamesWithDesc())
+    public ChatMessage callDefModel(String userPrompt) {
+        String fullPromptText = String.format(Constants.getDefaultPrompt(true, false, false), cmdRegistry.getCommandNamesWithDesc())
                 + "\n" + userPrompt;
         return finalCallModel(fullPromptText, userPrompt);
     }
 
-    public ChatMessage callInstructedModel(String userPrompt, String sysInstructions, boolean sendCommands) {
+    public ChatMessage callDefInstructedModel(String userPrompt, String sysInstructions, boolean sendCommands) {
         String fullPromptText;
         if(sendCommands) {
-            fullPromptText = String.format(Constants.getPrompt(sendCommands, false, true), cmdRegistry.getCommandNamesWithDesc(), sysInstructions)
+            fullPromptText = String.format(Constants.getDefaultPrompt(sendCommands, false, true), cmdRegistry.getCommandNamesWithDesc(), sysInstructions)
                     + "\n" + userPrompt;
         }else{
-            fullPromptText = String.format(Constants.getPrompt(sendCommands, false, true), sysInstructions)
+            fullPromptText = String.format(Constants.getDefaultPrompt(sendCommands, false, true), sysInstructions)
                     + "\n" + userPrompt;
         }
         return finalCallModel(fullPromptText, userPrompt);
     }
 
-    public  ChatMessage callContextedModel(String userPrompt, String context) {
-        String fullPromptText = String.format(Constants.getPrompt(true, true, false), cmdRegistry.getCommandNamesWithDesc(), context)
+    public  ChatMessage callDefContextedModel(String userPrompt, String context) {
+        String fullPromptText = String.format(Constants.getDefaultPrompt(true, true, false), cmdRegistry.getCommandNamesWithDesc(), context)
                 + "\n" + userPrompt;
         return finalCallModel(fullPromptText, userPrompt);
     }
 
-    public ChatMessage callModel(String userPrompt, String context, String sysInstructions) {
-        String fullPromptText = String.format(Constants.getPrompt(true, true, true), cmdRegistry.getCommandNamesWithDesc(), context, sysInstructions)
+    public ChatMessage callDefModel(String userPrompt, String context, String sysInstructions) {
+        String fullPromptText = String.format(Constants.getDefaultPrompt(true, true, true), cmdRegistry.getCommandNamesWithDesc(), context, sysInstructions)
                 + "\n" + userPrompt;
         return finalCallModel(fullPromptText, userPrompt);
+    }
+
+    public float[] callEmbeddingModel(String textToEmbed) {
+        String escapedText = textToEmbed
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", " ");
+
+        String jsonBody = """
+            {
+                "model": "%s",
+                "input": "%s"
+            }
+            """.formatted(defaultEmbeddingModel, escapedText);
+
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(defaultEmbeddingModel))
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                System.err.println("Embedding Error: " + response.body());
+                return null;
+            }
+
+            String body = response.body();
+            int start = body.indexOf("\"embedding\":") + 12;
+            int end = body.indexOf("]", start) + 1;
+
+            String vectorString = body.substring(start, end).replace("[", "").replace("]", "").trim();
+
+            String[] parts = vectorString.split(",");
+            float[] vector = new float[parts.length];
+            for (int i = 0; i < parts.length; i++) {
+                vector[i] = Float.parseFloat(parts[i].trim());
+            }
+
+            return vector;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
 

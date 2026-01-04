@@ -14,8 +14,11 @@ public class VoiceService {
 
     private static final String TEMP_AUDIO_FILE = "D:\\Coding\\Projects\\smartsteve\\piper\\debug_audio.wav";
 
+    private static Thread speakThread;
+
     public static void speak(String text, Runnable onComplete) {
-        new Thread(() -> {
+        shutUp();
+        speakThread = new Thread(() -> {
             try {
                 generateWavFile(text);
 
@@ -23,14 +26,22 @@ public class VoiceService {
 
                 if (onComplete != null) onComplete.run();
 
+                shutUp();
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }).start();
+        });
+        speakThread.start();
     }
 
-    public void shutUp() {
-        Thread.currentThread().interrupt();
+    public static void shutUp() {
+        if(speakThread != null) {
+            speakThread.interrupt();
+        }
+    }
+
+    public static Thread getCurrentThread() {
+        return speakThread;
     }
 
     private static void generateWavFile(String text) throws IOException, InterruptedException {
