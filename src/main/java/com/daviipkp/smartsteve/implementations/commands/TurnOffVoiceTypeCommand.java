@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 public class TurnOffVoiceTypeCommand extends InstantCommand {
 
     public TurnOffVoiceTypeCommand(EarService eService) {
-        super(new Runnable() {
+        setCommand(new Runnable() {
             @Override
             public void run() {
                 eService.stopVoiceTyping();

@@ -1,33 +1,26 @@
 package com.daviipkp.smartsteve.implementations.commands;
 
+import com.daviipkp.SteveCommandLib.instance.TriggeredCommand;
+import com.daviipkp.SteveJsoning.annotations.CommandDescription;
 import com.daviipkp.smartsteve.Instance.CommandE;
 import com.daviipkp.smartsteve.services.CommandRegistry;
 import org.springframework.stereotype.Component;
 
-@Component
-public class DatabaseConsultCommand extends CommandE {
-    @Override
-    public void execute() {
+@CommandDescription(value = "Use to check for user requests regarded to past interactions.", possibleArguments = "Any request, saved info or idea that might have been saved.")
+public class DatabaseConsultCommand extends WebRequestTriggeredCommand {
 
+    @Override
+    public boolean checkTrigger() {
+        return false;
     }
 
     @Override
-    public void callback() {
+    public void handleError(Exception e) {
 
-    }
-
-    @Override
-    public void executeSupCallback() {
-
-    }
-
-    @Override
-    public String getID() {
-        return this.getClass().getSimpleName();
     }
 
     @Override
     public String getDescription() {
-        return "Use to check for user requests regarded to past interactions. Example usage: " + CommandRegistry.getExampleUsage(getID(), "local beer business idea");
+        return "";
     }
 }

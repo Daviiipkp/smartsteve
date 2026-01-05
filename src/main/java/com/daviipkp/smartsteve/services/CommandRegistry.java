@@ -11,12 +11,6 @@ import java.util.*;
 @Service
 public class CommandRegistry {
 
-    @Getter
-    private List<CommandE> commands;
-
-    @Getter
-    private List<String> commandNames;
-
     private final LLMService llmS;
 
     public CommandRegistry(ApplicationContext context, List<CommandE> allCommands, @Lazy LLMService llmService) {

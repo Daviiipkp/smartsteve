@@ -13,7 +13,7 @@ import java.io.IOException;
 public class SystemShutdownCommand extends InstantCommand {
 
     public SystemShutdownCommand(String... args) {
-        super(new Runnable() {
+        setCommand(new Runnable() {
             public void run() {
                 ProcessBuilder pb = new ProcessBuilder("shutdown", "/s", "/f", "/t", (args.length == 0) ? "0" : args[0]);
                 try {

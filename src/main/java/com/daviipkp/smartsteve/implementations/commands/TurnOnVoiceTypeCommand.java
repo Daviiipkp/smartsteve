@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class TurnOnVoiceTypeCommand extends InstantCommand {
     public TurnOnVoiceTypeCommand(EarService eService) {
-        super(new Runnable() {
+        setCommand(new Runnable() {
             @Override
             public void run() {
                 eService.startVoiceTyping();

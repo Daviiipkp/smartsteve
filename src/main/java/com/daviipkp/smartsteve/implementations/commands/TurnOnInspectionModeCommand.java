@@ -1,18 +1,16 @@
 package com.daviipkp.smartsteve.implementations.commands;
 
+import com.daviipkp.SteveCommandLib.SteveCommandLib;
 import com.daviipkp.SteveCommandLib.instance.InstantCommand;
 import com.daviipkp.SteveJsoning.annotations.CommandDescription;
-import com.daviipkp.smartsteve.Instance.CommandE;
-import org.springframework.stereotype.Component;
 
-@CommandDescription(value = "Used to kill instantly the system without arguments.", possibleArguments = "")
-public class KillSwitchCommand extends InstantCommand {
-
-    public KillSwitchCommand() {
+@CommandDescription(value = "Activates Inspection Mode.", possibleArguments = "")
+public class TurnOnInspectionModeCommand extends InstantCommand {
+    public TurnOnInspectionModeCommand() {
         setCommand(new Runnable() {
             @Override
             public void run() {
-
+                SteveCommandLib.debug(true);
             }
         });
     }

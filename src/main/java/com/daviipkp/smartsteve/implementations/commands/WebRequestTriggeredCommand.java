@@ -2,7 +2,7 @@ package com.daviipkp.smartsteve.implementations.commands;
 
 import com.daviipkp.SteveCommandLib.instance.TriggeredCommand;
 
-public class CheckIfAppIsOpenCommand extends TriggeredCommand {
+public class WebRequestTriggeredCommand extends TriggeredCommand {
     @Override
     public boolean checkTrigger() {
         return false;
@@ -17,7 +17,4 @@ public class CheckIfAppIsOpenCommand extends TriggeredCommand {
     public String getDescription() {
         return "";
     }
-    //Checks if a software passed as argument for the command is in computer's process list
-    //In the arguments, AI is instructed to give another command as well to happen if process is open and yet another command if process is not open
-    //all logic is executed in Java
 }
