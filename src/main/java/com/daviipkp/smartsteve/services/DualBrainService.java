@@ -1,5 +1,6 @@
 package com.daviipkp.smartsteve.services;
 
+import com.daviipkp.SteveCommandLib.SteveCommandLib;
 import com.daviipkp.smartsteve.Constants;
 import com.daviipkp.smartsteve.Instance.ChatMessage;
 import com.daviipkp.smartsteve.repository.ChatRepository;
@@ -27,7 +28,6 @@ public class DualBrainService {
     private final VoiceService voiceService;
     private final EarService earService;
     private final SearchService searchService;
-    private final CommandRegistry cmdRegistry;
     private final LLMService llmS;
     @Getter
     @Setter
@@ -36,16 +36,14 @@ public class DualBrainService {
     @Value("${google.api.key}")
     private String googleApiKey;
 
-
-
-    public DualBrainService(ChatRepository arg0, VoiceService voiceService, @Lazy EarService earService, LLMService llmservice, SearchService searchService,  CommandRegistry commandRegistry) {
+    public DualBrainService(ChatRepository arg0, VoiceService voiceService, @Lazy EarService earService, LLMService llmservice, SearchService searchService) {
         this.searchService = searchService;
         this.restClient = RestClient.create();
         this.chatRepo = arg0;
         this.earService = earService;
         this.voiceService = voiceService;
-        this.cmdRegistry = commandRegistry;
         this.llmS = llmservice;
+        SteveCommandLib.debug(true);
     }
 
     public String processCommand(String userPrompt) throws ExecutionException, InterruptedException {
@@ -59,35 +57,20 @@ public class DualBrainService {
 
 
         ChatMessage cResponse = fResponse.get();
-        String response = cResponse.getSteveResponse();
-        String cmd = cResponse.getCommand();
 
 
-        if(Constants.DEBUG) {
-            System.out.println("============== NOVA REQUISIÇÃO ==============");
-            System.out.println("user: " + userPrompt);
-            System.out.println(">> Response: " + response);
-            System.out.println(">> Command: " + cmd);
-            System.out.println(">> Context: " + cResponse.getContext());
+        SteveCommandLib.systemPrint("============== NOVA REQUISIÇÃO ==============");
+        SteveCommandLib.systemPrint("user: " + userPrompt);
+        SteveCommandLib.systemPrint(">> Response: " + cResponse.getSteveResponse());
+        SteveCommandLib.systemPrint(">> Command: " + cResponse.getCommand());
+        SteveCommandLib.systemPrint(">> Context: " + cResponse.getContext());
 
+        chatRepo.save(cResponse);
+        SteveCommandLib.systemPrint(">> Memória salva no banco H2: " + cResponse);
 
-        }
-
-
-        ChatMessage chatMessage = new ChatMessage(userPrompt, response, context, cmd);
-        chatRepo.save(chatMessage);
-        if(Constants.DEBUG) {
-            System.out.println(">> Memória salva no banco H2.");
-        }
         earService.stopListening();
-        VoiceService.speak(response, () -> {
-            earService.resumeListening();
-            if(cmdRegistry.getCommandNames().contains(cmd)) {
-                cmdRegistry.getCommands().get(cmdRegistry.getCommandNames().indexOf(cmd)).execute();
-            }
-        });
 
-        return response;
+        return cResponse.getSteveResponse();
     }
 
     private String getContext() {
@@ -107,35 +90,6 @@ public class DualBrainService {
                         (m.getCommand().equals("null")?"":"\nCommand: "+m.getCommand()))
                 .collect(Collectors.joining("\n---\n"));
     }
-
-
-
-//    private String detectIntent(String userPrompt) {
-//        try {
-//            String url = "http://localhost:11434/api/generate";
-//
-//            var body = Map.of(
-//                    "model", "qwen3-coder:480b-cloud",
-//                    "prompt", String.format(Constants.INTENT_PROMPT, Command.getCommandNames()) + " \"" + userPrompt + "\"",
-//                    "stream", false,
-//                    "options", Map.of()
-//            );
-//
-//            String jsonResponse = restClient.post()
-//                    .uri(url)
-//                    .contentType(MediaType.APPLICATION_JSON)
-//                    .body(body)
-//                    .retrieve()
-//                    .body(String.class);
-//
-//            return getOllamaTextFromJson(jsonResponse).trim();
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            return "CHAT_NORMAL";
-//        }
-//    }
-
-
 
 }
 

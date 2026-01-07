@@ -8,8 +8,6 @@ public class Constants {
 
     public static final String PROJECT_VERSION = "1.0";
 
-    public static final boolean DEBUG = true;
-
     public static final String defaultPrompt = """
                 Input Date: %s
                 ### SYSTEM ROLE
@@ -21,9 +19,22 @@ public class Constants {
                 Structure:
                 {
                   "status": "SUCCESS", "DOING", "IGNORE",
-                  "action": "COMMAND_ID_FROM_LIST" or null,
-                  "speech": "Text to be spoken to user",
+                  "action": {
+                    "COMMAND_ID": {
+                      "argument": "value"
+                    }
+                  },
                   "memory": "Concise log of what just happened (User intent + Your Action) to serve as context for the NEXT turn."
+                }
+                Example Structure:
+                {
+                  "status": "SUCCESS",
+                  "action": {
+                    "SystemShutdownCommand": {
+                      "time": "20"
+                    }
+                  },
+                  "memory": "User asked me to shutdown the system in 20 seconds. I sent the command to do it."
                 }
                 
                 ### RULES
@@ -36,27 +47,6 @@ public class Constants {
                 
                 %s
                 
-                ### EXAMPLES
-                Input: "Hello"
-                Output: { "status": "SUCCESS", "action": "null", "speech": "Hello, sir!", "memory": "User greeted me with Hello." }
-                
-                Input: "What commands do you have?"
-                Output: { "status": "SUCCESS", "action": null, "speech": "Sir, I can execute: CMD_LIGHTS_ON, CMD_SEARCH, and others listed in my protocol.", "memory": "User asked for capabilities. I listed the available commands." }
-                
-                Input: "Turn on the kitchen lights"
-                Output: { "status": "SUCCESS", "action": "CMD_LIGHTS_ON", "speech": "Yes, sir.", "memory": "User requested kitchen lights on. Executed CMD_LIGHTS_ON." }
-                
-                Input: "Turn on the kitchen lights and then play StressedOut on Spotify"
-                Output: { "status": "SUCCESS", "action": "CMD_LIGHTS_ON&&PlayOnSpotifyCommand___Stressed Out", "speech": "Yes, sir.", "memory": "User requested kitchen lights on. Executed CMD_LIGHTS_ON." }
-                
-                Input: "Make me a sandwich"
-                Output: { "status": "SUCCESS", "action": null, "speech": "That's not on my command list, Sir.", "memory": "User asked for a sandwich. Refused due to lack of capabilities." }
-                
-                Input: "Search for some cool games"
-                Output: { "status": "DOING", "action": "WEB_SEARCH cool games", "speech": "Searching, sir.", "memory": "User asked for cool games. Triggered WEB_SEARCH." }
-                
-                Input: "meh"
-                Output: { "status": "IGNORE", "action": null, "speech": null, "memory": null }
                 
                 ### USER INPUT
                 """;

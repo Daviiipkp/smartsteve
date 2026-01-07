@@ -1,14 +1,13 @@
 package com.daviipkp.smartsteve.Instance;
 
 
+import com.daviipkp.SteveJsoning.SteveJsoning;
 import com.daviipkp.smartsteve.Utils;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-
-import static com.daviipkp.smartsteve.Utils.extractField;
 
 @Entity
 @Data
@@ -49,21 +48,6 @@ public class ChatMessage {
         this.timestamp = LocalDateTime.now();
     }
 
-    public static ChatMessage fromJson(String rawJson, String originalUserPrompt) {
-        String innerJson = Utils.extractInnerJson(rawJson);
-
-        String speech = extractField(innerJson, "speech");
-        String memory = extractField(innerJson, "memory");
-        String action = extractField(innerJson, "action");
-
-        String finalSpeech = (speech == null || speech.equalsIgnoreCase("null")) ? "" : speech;
-
-        String finalContext = (memory == null || memory.equalsIgnoreCase("null")) ? "" : memory;
-
-        String finalCommand = (action == null || action.equalsIgnoreCase("null")) ? "" : action;
-
-        return new ChatMessage(originalUserPrompt, finalSpeech, finalContext, finalCommand);
-    }
 
 
 }

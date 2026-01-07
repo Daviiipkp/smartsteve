@@ -2,14 +2,12 @@ package com.daviipkp.smartsteve.implementations.commands;
 
 import com.daviipkp.SteveCommandLib.instance.InstantCommand;
 import com.daviipkp.SteveJsoning.annotations.CommandDescription;
-import com.daviipkp.smartsteve.Instance.CommandE;
-import com.daviipkp.smartsteve.services.CommandRegistry;
-import com.daviipkp.smartsteve.services.EarService;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
-@CommandDescription(value = "Command designed to shutdown the computer/system.", possibleArguments = "Time in seconds for it to shutdown. No argument means instantly.")
+@CommandDescription(value = "Command designed to shutdown the computer/system. Argument is time in seconds for it to shutdown. No argument means instantly.",
+        possibleArguments = "time: <number in seconds>",
+        exampleUsage = "time: 300")
 public class SystemShutdownCommand extends InstantCommand {
 
     public SystemShutdownCommand(String... args) {

@@ -1,5 +1,7 @@
 package com.daviipkp.smartsteve.services;
 
+import com.daviipkp.SteveJsoning.SteveJsoning;
+import com.daviipkp.smartsteve.Instance.ChatMessage;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.vosk.Model;
@@ -106,6 +108,7 @@ public class EarService {
                                     VoiceService.shutUp();
                                     return;
                                 }
+                                System.out.println(SteveJsoning.stringify(new ChatMessage("a","b","c","d")));
                                 if (!text.trim().isEmpty()) {
                                     System.out.println("User said: " + text);
 

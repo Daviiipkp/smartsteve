@@ -3,7 +3,9 @@ package com.daviipkp.smartsteve.implementations.commands;
 import com.daviipkp.SteveCommandLib.instance.InstantCommand;
 import com.daviipkp.SteveJsoning.annotations.CommandDescription;
 
-@CommandDescription(value = "Use to talk anything that you want.", possibleArguments = "Any message as argument of this command will be spoke directly to the user.")
+@CommandDescription(value = "Use to talk anything that you want. Any message as argument of this command will be spoke directly to the user.",
+        possibleArguments = "message: <String>",
+        exampleUsage = "message: Hello, sir")
 public class InstantTalkCommand extends InstantCommand {
 
     public InstantTalkCommand() {

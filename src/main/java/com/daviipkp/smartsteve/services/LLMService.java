@@ -1,8 +1,12 @@
 package com.daviipkp.smartsteve.services;
 
+import com.daviipkp.SteveCommandLib.SteveCommandLib;
+import com.daviipkp.SteveCommandLib.instance.Command;
+import com.daviipkp.SteveJsoning.SteveJsoning;
 import com.daviipkp.smartsteve.Constants;
-import com.daviipkp.smartsteve.Instance.CommandE;
 import com.daviipkp.smartsteve.Instance.ChatMessage;
+import com.daviipkp.smartsteve.Instance.SteveResponse;
+import com.daviipkp.smartsteve.Utils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -18,7 +22,7 @@ import java.util.*;
 public class LLMService {
 
     private static final String defaultProvider = "https://ai.hackclub.com/proxy/v1/chat/completions";
-    private static final String defaultModel = "google/gemini-3-flash-preview";
+    private static final String defaultModel = "qwen/qwen3-32b";
     private static final String defaultEmbeddingModel = "openai/text-embedding-3-small";
     static String apiKey;
 
@@ -26,9 +30,6 @@ public class LLMService {
     public void setApiKey(String value) {
         apiKey = value;
     }
-
-    @Autowired
-    private CommandRegistry cmdRegistry;
 
     private ChatMessage finalCallModel(String fullPromptText, String userPrompt) {
         String escapedPrompt = fullPromptText
@@ -51,8 +52,7 @@ public class LLMService {
 
         try {
             long time = System.currentTimeMillis();
-            System.out.println("Prompt: ");
-            System.out.println(jsonBody);
+            SteveCommandLib.systemPrint("Prompt sent: " + fullPromptText);
             HttpClient client = HttpClient.newHttpClient();
 
             HttpRequest request = HttpRequest.newBuilder()
@@ -63,50 +63,19 @@ public class LLMService {
                     .build();
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            System.out.println("Request time: " + (System.currentTimeMillis() - time));
+            SteveCommandLib.systemPrint("Request time: " + (System.currentTimeMillis() - time));
 
             if (response.statusCode() != 200) {
                 System.err.println("error: " + response.statusCode());
                 System.err.println("error bodyy: " + response.body());
                 return null;
             }
-            ChatMessage s = ChatMessage.fromJson(response.body(), userPrompt);
-            String action = s.getCommand();
-            List<CommandE> toExec = new ArrayList<>();
-            if (action != null && !action.equals("null") && !action.isEmpty()) {
-                String[] cmdsWithArg = action.contains("&&")?action.split("&&"): List.of(action).toArray(new String[1]);
-                for(CommandE cs : cmdRegistry.getCommands()) {
-                    for(String cmd : cmdsWithArg) {
-                        if(cs.getID().contains((cmd.contains("___")?cmd.split("___")[0]:cmd))) {
-                            try {
-                                if(cmd.contains("___")) {
-                                    String[] args = cmd.split("___");
-                                    String[] result = Arrays.copyOfRange(args, 1, args.length);
-                                    toExec.add(cs.setArguments(result).setContext(s.getContext()));
-                                }else{
-                                    toExec.add(cs.setContext(s.getContext()));
-                                }
-                            } catch (NullPointerException e) {
-                                e.printStackTrace();
-                                cmdRegistry.handleNotFound(action);
-                                return null;
-                            }
-                        }
-                    }
-                }
 
-            }
-            new Thread(() -> {
-                while(true) {
-                    if(!toExec.isEmpty()) {
-                        toExec.get(0).execute();
-                        toExec.remove(0);
-                    }else{
-                        break;
-                    }
-                }
-            }).start();
-            return s;
+            SteveResponse s = SteveJsoning.parse(SteveJsoning.valueAtPath("/choices/0/message",response.body()), SteveResponse.class);
+
+
+            System.out.println(s.action.toString());
+            return new ChatMessage("", "", "", "");
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -115,7 +84,7 @@ public class LLMService {
     }
 
     public ChatMessage callDefModel(String userPrompt) {
-        String fullPromptText = String.format(Constants.getDefaultPrompt(true, false, false), cmdRegistry.getCommandNamesWithDesc())
+        String fullPromptText = String.format(Constants.getDefaultPrompt(true, false, false), Utils.getCommandNamesWithDesc())
                 + "\n" + userPrompt;
         return finalCallModel(fullPromptText, userPrompt);
     }
@@ -123,7 +92,7 @@ public class LLMService {
     public ChatMessage callDefInstructedModel(String userPrompt, String sysInstructions, boolean sendCommands) {
         String fullPromptText;
         if(sendCommands) {
-            fullPromptText = String.format(Constants.getDefaultPrompt(sendCommands, false, true), cmdRegistry.getCommandNamesWithDesc(), sysInstructions)
+            fullPromptText = String.format(Constants.getDefaultPrompt(sendCommands, false, true), Utils.getCommandNamesWithDesc(), sysInstructions)
                     + "\n" + userPrompt;
         }else{
             fullPromptText = String.format(Constants.getDefaultPrompt(sendCommands, false, true), sysInstructions)
@@ -133,13 +102,13 @@ public class LLMService {
     }
 
     public  ChatMessage callDefContextedModel(String userPrompt, String context) {
-        String fullPromptText = String.format(Constants.getDefaultPrompt(true, true, false), cmdRegistry.getCommandNamesWithDesc(), context)
+        String fullPromptText = String.format(Constants.getDefaultPrompt(true, true, false), Utils.getCommandNamesWithDesc(), context)
                 + "\n" + userPrompt;
         return finalCallModel(fullPromptText, userPrompt);
     }
 
     public ChatMessage callDefModel(String userPrompt, String context, String sysInstructions) {
-        String fullPromptText = String.format(Constants.getDefaultPrompt(true, true, true), cmdRegistry.getCommandNamesWithDesc(), context, sysInstructions)
+        String fullPromptText = String.format(Constants.getDefaultPrompt(true, true, true), Utils.getCommandNamesWithDesc(), context, sysInstructions)
                 + "\n" + userPrompt;
         return finalCallModel(fullPromptText, userPrompt);
     }
