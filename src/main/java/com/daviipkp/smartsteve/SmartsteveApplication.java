@@ -24,6 +24,8 @@ public class SmartsteveApplication {
                 SpringContext.getBean(LLMService.class).finalCallModel(Prompt.getStartupPrompt());
             }
         }
+        LLMService.warmUp();
+        java.security.Security.setProperty("networkaddress.cache.ttl", "-1");
         if(Constants.CLEAR_MEMO_ON_STARTUP) {
             try {
                 JdbcTemplate jdbcTemplate = SpringContext.getBean(JdbcTemplate.class);

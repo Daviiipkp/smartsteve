@@ -37,24 +37,20 @@ public class VoiceService {
         speakThread.start();
     }
 
-    public static void speak(String text, Runnable onComplete) {
-        shutUp();
-        speakThread = new Thread(() -> {
+    public static void speak(String text, Runnable onFinish) {
+        new Thread(() -> {
             try {
                 generateWavFile(text);
-                EarService s = SpringContext.getBean(EarService.class);
-                s.stopListening();
-
                 playWavFile();
 
-                if (onComplete != null) onComplete.run();
-                s.resumeListening();
-                shutUp();
             } catch (Exception e) {
                 e.printStackTrace();
+            } finally {
+                if (onFinish != null) {
+                    onFinish.run();
+                }
             }
-        });
-        speakThread.start();
+        }).start();
     }
 
     public static void shutUp() {

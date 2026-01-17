@@ -122,42 +122,47 @@ public class DualBrainService {
     }
 
     public Map<Protocol, String> getProtocols(int top, String... query) {
-//        VectorStore vectorStore = SpringContext.getBean(VectorStore.class);
-//        String q = String.join(" ", query);
-//        SearchRequest request = SearchRequest.query(q)
-//                .withTopK(top)
-//                .withSimilarityThreshold(0.5);
-//
-//
-//        List<Document> r;
-//
-//        try {
-//            r = vectorStore.similaritySearch(request);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            throw e;
-//        }
-//
-//        if(Constants.MEMORY_DEBUG) {
-//            SteveCommandLib.systemPrint("Trying to get Similar protocol");
-//        }
         Map<Protocol, String> toReturn = new HashMap<>();
-//        for (Document doc : r) {
-//            String c = doc.getContent();
-//            Map<String, Object> m = doc.getMetadata();
-//            try {
-//                String objType = (String)m.get("type");
-//                if(objType.equals("protocol")) {
-//                    toReturn.put(SteveJsoning.parse(c, Protocol.class), doc.getId());
-//                    if(Constants.MEMORY_DEBUG) {
-//                        SteveCommandLib.systemPrint("Similar added: " + c);
-//                    }
-//                }
-//            }catch (Exception e) {
-//
-//            }
-//
-//        }
+        if(query.length == 0 || (query.length == 1 && query[0].equals(""))) {
+            return toReturn;
+        }
+        VectorStore vectorStore = SpringContext.getBean(VectorStore.class);
+        String q = String.join(" ", query);
+        SearchRequest request = SearchRequest.query(q)
+                .withTopK(top)
+                .withSimilarityThreshold(0.5);
+
+
+        List<Document> r;
+
+        try {
+            r = vectorStore.similaritySearch(request);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
+
+        if(Constants.MEMORY_DEBUG) {
+            SteveCommandLib.systemPrint("Trying to get Similar protocol");
+        }
+
+
+        for (Document doc : r) {
+            String c = doc.getContent();
+            Map<String, Object> m = doc.getMetadata();
+            try {
+                String objType = (String)m.get("type");
+                if(objType.equals("protocol")) {
+                    toReturn.put(SteveJsoning.parse(c, Protocol.class), doc.getId());
+                    if(Constants.MEMORY_DEBUG) {
+                        SteveCommandLib.systemPrint("Similar added: " + c);
+                    }
+                }
+            }catch (Exception e) {
+
+            }
+
+        }
 
 
         return toReturn;

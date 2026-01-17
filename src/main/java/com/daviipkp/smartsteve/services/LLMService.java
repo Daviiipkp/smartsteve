@@ -5,37 +5,66 @@ import com.daviipkp.SteveCommandLib.instance.Command;
 import com.daviipkp.SteveJsoning.SteveJsoning;
 import com.daviipkp.smartsteve.Constants;
 import com.daviipkp.smartsteve.Instance.ChatMessage;
-import com.daviipkp.smartsteve.Instance.Protocol;
 import com.daviipkp.smartsteve.Instance.SteveResponse;
 import com.daviipkp.smartsteve.Utils;
-import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.daviipkp.smartsteve.implementations.commands.TalkCommand;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import javax.swing.*;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.time.Duration;
 
 @Service
 public class LLMService {
 
-    private static final String defaultProvider = "https://ai.hackclub.com/proxy/v1/chat/completions";
-    private static final String defaultModel = "google/gemini-3-flash-preview";
+    private static final String defaultProvider = "https://api.groq.com/openai/v1/chat/completions";
+    private static final String defaultModel = "openai/gpt-oss-120b";
+    private static final String apiKeyName = "${groq.api.key}";
     static String apiKey;
+
+    private static final HttpClient CLIENT = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_2)
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
 
     private long lastTick = 0;
 
-    @Value("${hcai.api.key}")
+    @Value(apiKeyName)
     public void setApiKey(String value) {
         apiKey = value;
+    }
+
+    public static void warmUp() {
+        new Thread(() -> {
+            try {
+                String jsonBody = """
+                {
+                    "model": "llama-3.1-8b-instant",
+                    "messages": [{"role": "user", "content": "hi"}],
+                    "max_tokens": 1
+                }
+                """;
+
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(defaultProvider))
+                        .header("Authorization", "Bearer " + apiKey)
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                        .build();
+                HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+            } catch (Exception e) {
+                System.err.println("error on Warm-up: " + e.getMessage());
+            }
+        }).start();
     }
 
     @Scheduled(fixedRate = 50)
@@ -47,7 +76,7 @@ public class LLMService {
         lastTick = System.currentTimeMillis();
     }
 
-    public ChatMessage finalCallModel(String fullPromptText, String userPrompt) {
+    private HttpResponse<String> sendRequest(String fullPromptText) throws Exception {
         String escapedPrompt = fullPromptText
                 .replace("\\", "\\\\")
                 .replace("\"", "\\\"")
@@ -66,63 +95,53 @@ public class LLMService {
         }
         """.formatted(defaultModel, escapedPrompt);
 
+        if(Constants.FINAL_PROMPT_DEBUG) {
+            SteveCommandLib.systemPrint("Prompt sent length: " + fullPromptText.length());
+        }
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(defaultProvider))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
+                .build();
+
+        long time = System.currentTimeMillis();
+        HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+        SteveCommandLib.systemPrint("Latency: " + (System.currentTimeMillis() - time) + "ms");
+
+        return response;
+    }
+
+    private String extractToken(String jsonPart) {
         try {
-            long time = System.currentTimeMillis();
-            if(Constants.FINAL_PROMPT_DEBUG) {
-                SteveCommandLib.systemPrint("Prompt sent: " + fullPromptText);
+            int contentIndex = jsonPart.indexOf("\"content\":\"");
+            if (contentIndex == -1) return null;
+
+            int start = contentIndex + 11;
+            int end = jsonPart.indexOf("\"", start);
+            while (jsonPart.charAt(end - 1) == '\\') {
+                end = jsonPart.indexOf("\"", end + 1);
             }
-            HttpClient client = HttpClient.newHttpClient();
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(defaultProvider))
-                    .header("Authorization", "Bearer " + apiKey)
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
-                    .build();
+            String rawToken = jsonPart.substring(start, end);
+            return rawToken.replace("\\n", "\n").replace("\\\"", "\"");
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            SteveCommandLib.systemPrint("Request time: " + (System.currentTimeMillis() - time));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public ChatMessage finalCallModel(String fullPromptText, String userPrompt) {
+        try {
+            HttpResponse<String> response = sendRequest(fullPromptText);
 
             if (response.statusCode() != 200) {
-                System.err.println("error: " + response.statusCode());
-                System.err.println("error bodyy: " + response.body());
+                System.err.println("Groq Error: " + response.statusCode() + " Body: " + response.body());
                 return null;
             }
 
-
-            SteveResponse s = SteveJsoning.parse(SteveJsoning.valueAtPath("/choices/0/message/content", response.body()), SteveResponse.class);
-
-            Set<Class<?>> registeredCmds = Utils.getRegisteredCommands();
-            if(s.action != null) {
-                for(String cmd : s.action.keySet()) {
-                    try {
-                        Command command = Utils.getCommandByName(cmd);
-                        for(String argName : s.action.get(cmd).keySet()) {
-                            try {
-                                Field field = command.getClass().getDeclaredField(argName);
-                                field.setAccessible(true);
-                                Object obj = s.action.get(cmd).get(argName);
-                                if(field.getType().isAssignableFrom(String.class)) {
-                                    field.set(command, s.action.get(cmd).get(argName));
-                                }else if(field.getType().isAssignableFrom(int.class)) {
-                                    field.set(command, Integer.parseInt(s.action.get(cmd).get(argName)));
-                                }else if(field.getType().isAssignableFrom(float.class)) {
-                                    field.set(command, Float.parseFloat(s.action.get(cmd).get(argName)));
-                                }else if(field.getType().isAssignableFrom(boolean.class)) {
-                                    field.set(command, Boolean.parseBoolean(s.action.get(cmd).get(argName)));
-                                }else if(field.getType().isAssignableFrom(long.class)) {
-                                    field.set(command, Long.parseLong(s.action.get(cmd).get(argName)));
-                                }
-                            } catch (NoSuchFieldException e) {
-                            }
-                        }
-                        SteveCommandLib.addCommand(command);
-                    } catch (Exception e) {
-                        System.out.println("Couldn't find command or it needs a constructor parameter. Exception: " + e.getMessage() );
-                    }
-                }
-            }
-
+            processCommands(response.body());
 
             return new ChatMessage(userPrompt, SteveJsoning.valueAtPath("/choices/0/message/content", response.body()));
 
@@ -133,83 +152,71 @@ public class LLMService {
     }
 
     public void finalCallModel(String fullPromptText) {
-        String escapedPrompt = fullPromptText
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "");
-
-        String jsonBody = """
-        {
-            "model": "%s",
-            "messages": [
-                {
-                    "role": "user", 
-                    "content": "%s"
-                }
-            ]
-        }
-        """.formatted(defaultModel, escapedPrompt);
-
         try {
-            long time = System.currentTimeMillis();
-            if(Constants.FINAL_PROMPT_DEBUG) {
-                SteveCommandLib.systemPrint("Prompt sent: " + fullPromptText);
-            }
-            HttpClient client = HttpClient.newHttpClient();
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(defaultProvider))
-                    .header("Authorization", "Bearer " + apiKey)
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
-                    .build();
-
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            SteveCommandLib.systemPrint("Request time: " + (System.currentTimeMillis() - time));
+            HttpResponse<String> response = sendRequest(fullPromptText);
 
             if (response.statusCode() != 200) {
-                System.err.println("error: " + response.statusCode());
-                System.err.println("error bodyy: " + response.body());
+                System.err.println("Groq Error: " + response.statusCode());
                 return;
             }
 
-
-            SteveResponse s = SteveJsoning.parse(SteveJsoning.valueAtPath("/choices/0/message/content", response.body()), SteveResponse.class);
             if(Constants.STEVE_RESPONSE_DEBUG) {
-                SteveCommandLib.systemPrint("STEVE RESPONSE: " + SteveJsoning.valueAtPath("/choices/0/message/content", response.body()));
+                SteveCommandLib.systemPrint("STEVE RAW: " + response.body());
             }
-            for(String cmd : s.action.keySet()) {
-                try {
-                    Command command = Utils.getCommandByName(cmd);
-                    for(String argName : s.action.get(cmd).keySet()) {
-                        try {
-                            Field field = command.getClass().getDeclaredField(argName);
-                            field.setAccessible(true);
-                            Object obj = s.action.get(cmd).get(argName);
-                            if(field.getType().isAssignableFrom(String.class)) {
-                                field.set(command, s.action.get(cmd).get(argName));
-                            }else if(field.getType().isAssignableFrom(int.class)) {
-                                field.set(command, Integer.parseInt(s.action.get(cmd).get(argName)));
-                            }else if(field.getType().isAssignableFrom(float.class)) {
-                                field.set(command, Float.parseFloat(s.action.get(cmd).get(argName)));
-                            }else if(field.getType().isAssignableFrom(boolean.class)) {
-                                field.set(command, Boolean.parseBoolean(s.action.get(cmd).get(argName)));
-                            }
-                        } catch (NoSuchFieldException e) {
-                            e.printStackTrace();
+
+            processCommands(response.body());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void processCommands(String responseBody) {
+        try {
+            String content = SteveJsoning.valueAtPath("/choices/0/message/content", responseBody);
+            SteveResponse s = SteveJsoning.parse(content, SteveResponse.class);
+
+            if(s.action != null) {
+                for(String cmd : s.action.keySet()) {
+                    try {
+                        Command command = Utils.getCommandByName(cmd);
+                        if (command == null) {
+                            System.err.println("Command not found: " + cmd);
+                            continue;
                         }
+
+                        for(String argName : s.action.get(cmd).keySet()) {
+                            try {
+                                Field field = command.getClass().getDeclaredField(argName);
+                                field.setAccessible(true);
+                                String rawValue = s.action.get(cmd).get(argName);
+
+                                Class<?> type = field.getType();
+                                if(type.isAssignableFrom(String.class)) {
+                                    field.set(command, rawValue);
+                                } else if(type.isAssignableFrom(int.class) || type.isAssignableFrom(Integer.class)) {
+                                    field.set(command, Integer.parseInt(rawValue));
+                                } else if(type.isAssignableFrom(float.class) || type.isAssignableFrom(Float.class)) {
+                                    field.set(command, Float.parseFloat(rawValue));
+                                } else if(type.isAssignableFrom(double.class) || type.isAssignableFrom(Double.class)) {
+                                    field.set(command, Double.parseDouble(rawValue));
+                                } else if(type.isAssignableFrom(boolean.class) || type.isAssignableFrom(Boolean.class)) {
+                                    field.set(command, Boolean.parseBoolean(rawValue));
+                                } else if(type.isAssignableFrom(long.class) || type.isAssignableFrom(Long.class)) {
+                                    field.set(command, Long.parseLong(rawValue));
+                                }
+                            } catch (NoSuchFieldException e) {
+                                System.err.println("Field '" + argName + "' not found in command " + cmd);
+                            }
+                        }
+                        SteveCommandLib.addCommand(command);
+                    } catch (Exception e) {
+                        System.err.println("Error instantiating command " + cmd + ": " + e.getMessage());
                     }
-                    SteveCommandLib.addCommand(command);
-                } catch (Exception e) {
-                    System.out.println("Couldn't find command or it needs a constructor parameter. Exception: " );
-                    e.printStackTrace();
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-
-
 }

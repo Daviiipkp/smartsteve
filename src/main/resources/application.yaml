@@ -48,3 +48,7 @@ hcai:
 hcsearch:
     api:
         key: ${HCSEARCH_API_KEY}
+
+groq:
+    api:
+        key: ${GROQ_API_KEY}
