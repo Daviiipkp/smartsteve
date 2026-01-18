@@ -1,6 +1,7 @@
 package com.daviipkp.smartstevex.controller;
 
 import com.daviipkp.smartstevex.services.DualBrainService;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.concurrent.ExecutionException;
@@ -11,7 +12,7 @@ import java.util.concurrent.ExecutionException;
 public class SteveController {
     private final DualBrainService dbs;
 
-    public SteveController(DualBrainService dbs) {
+    public SteveController(@Lazy DualBrainService dbs) {
         this.dbs = dbs;
     }
 

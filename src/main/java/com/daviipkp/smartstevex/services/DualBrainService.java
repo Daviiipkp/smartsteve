@@ -31,9 +31,6 @@ public class DualBrainService {
     @Setter
     private static boolean voiceTyping = false;
 
-    @Value("${google.api.key}")
-    private String googleApiKey;
-
     public DualBrainService(ChatRepository arg0, LLMService llmservice) {
         this.restClient = RestClient.create();
         this.chatRepo = arg0;
