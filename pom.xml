@@ -9,10 +9,10 @@
         <relativePath/>
     </parent>
     <groupId>com.daviipkp</groupId>
-    <artifactId>smartsteve</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>smartsteve</name>
-    <description>smartsteve</description>
+    <artifactId>smartstevex</artifactId>
+    <version>1.0</version>
+    <name>smartstevex</name>
+    <description>LLM-based voice interface for Commands</description>
     <url/>
     <licenses>
         <license/>
@@ -153,6 +153,7 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                    <classifier>exec</classifier>
                 </configuration>
             </plugin>
         </plugins>
