@@ -26,10 +26,10 @@ Add Smart Steve to your project.
 
 <dependencies>
     <dependency>
-      <groupId>com.github.Daviiipkp</groupId>
-      <artifactId>Smart-Steve-X</artifactId>
-      <version>main</version>
-    </dependency>
+	    <groupId>com.github.Daviiipkp</groupId>
+	    <artifactId>Smart-Steve-X</artifactId>
+	    <version>1.0</version>
+	</dependency>
   </dependencies>
 ```
 
